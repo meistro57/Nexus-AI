@@ -20,5 +20,9 @@ This roadmap outlines the major phases planned for NEXUS AI. Dates are estimates
 - Integrate AI-powered suggestions for optimizing workflows
 - Support auto-scaling for high-demand scenarios
 
+### Phase 4 Progress
+- Added `/workflows/{id}/suggest` endpoint providing basic workflow improvement hints
+- Introduced an auto-scaling execution queue with `/workflows/{id}/enqueue`
+
 For more detailed specifications, see [Project_Overview.md](Project_Overview.md).
 
