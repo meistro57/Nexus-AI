@@ -1,9 +1,11 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 import json
 from pathlib import Path
+import asyncio
+import os
 
 from .nodes import NODE_REGISTRY
 
@@ -43,9 +45,47 @@ class Workflow(BaseModel):
     nodes: List[Node]
 
 
+class Suggestion(BaseModel):
+    message: str
+    node_id: Optional[str] = None
+
+
 WORKFLOWS: Dict[str, Workflow] = {}
 DATA_DIR = Path(__file__).resolve().parent / ".." / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# --- Auto-scaling Execution Queue ---
+MIN_WORKERS = int(os.getenv("MIN_WORKERS", "1"))
+MAX_WORKERS = int(os.getenv("MAX_WORKERS", "5"))
+WORKFLOW_QUEUE: asyncio.Queue[str] = asyncio.Queue()
+WORKERS: List[asyncio.Task] = []
+
+
+async def worker():
+    while True:
+        workflow_id = await WORKFLOW_QUEUE.get()
+        try:
+            workflow = WORKFLOWS.get(workflow_id)
+            if workflow:
+                logs: List[str] = []
+                context: Dict[str, Any] = {}
+                for node in workflow.nodes:
+                    await execute_node(node, logs, context)
+        finally:
+            WORKFLOW_QUEUE.task_done()
+
+
+async def scale_workers():
+    while len(WORKERS) < min(MAX_WORKERS, WORKFLOW_QUEUE.qsize() + MIN_WORKERS):
+        task = asyncio.create_task(worker())
+        WORKERS.append(task)
+
+
+@app.on_event("startup")
+async def startup_event():
+    # start initial workers
+    for _ in range(MIN_WORKERS):
+        WORKERS.append(asyncio.create_task(worker()))
 
 @app.websocket("/ws/logs")
 async def websocket_logs(ws: WebSocket):
@@ -112,6 +152,44 @@ def validate_workflow_endpoint(workflow_id: str):
     return {"valid": len(errors) == 0, "errors": errors}
 
 
+def generate_suggestions(workflow: Workflow) -> List[Suggestion]:
+    suggestions: List[Suggestion] = []
+    last_print: Optional[str] = None
+    for node in workflow.nodes:
+        if node.type == "print":
+            message = node.params.get("message", "")
+            if message == last_print:
+                suggestions.append(
+                    Suggestion(
+                        message="Consecutive print nodes with same message",
+                        node_id=node.id,
+                    )
+                )
+            last_print = message
+        if node.type == "add":
+            a = node.params.get("a", 0)
+            b = node.params.get("b", 0)
+            if a == 0 or b == 0:
+                suggestions.append(
+                    Suggestion(
+                        message="Adding zero has no effect", node_id=node.id
+                    )
+                )
+    if len(workflow.nodes) > 10:
+        suggestions.append(
+            Suggestion(message="Large workflow; consider splitting into parts")
+        )
+    return suggestions
+
+
+@app.post("/workflows/{workflow_id}/suggest", response_model=List[Suggestion])
+def suggest_workflow(workflow_id: str):
+    if workflow_id not in WORKFLOWS:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    workflow = WORKFLOWS[workflow_id]
+    return generate_suggestions(workflow)
+
+
 
 async def log(message: str, logs: List[str]):
     logs.append(message)
@@ -156,3 +234,18 @@ async def execute_workflow(workflow_id: str):
         await execute_node(node, logs, context)
 
     return {"logs": logs}
+
+
+@app.post("/workflows/{workflow_id}/enqueue")
+async def enqueue_workflow(workflow_id: str):
+    if workflow_id not in WORKFLOWS:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    await WORKFLOW_QUEUE.put(workflow_id)
+    await scale_workers()
+    return {"queued": workflow_id, "queue_size": WORKFLOW_QUEUE.qsize()}
+
+
+@app.get("/queue/status")
+def queue_status():
+    return {"queue_size": WORKFLOW_QUEUE.qsize(), "workers": len(WORKERS)}
+
