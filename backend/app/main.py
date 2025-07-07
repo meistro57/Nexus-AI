@@ -131,12 +131,6 @@ async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
             await log(f"{agent_name} -> {response}", logs)
     else:
         await log(f"Unknown node type: {node.type}", logs)
-def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
-    node_cls = NODE_REGISTRY.get(node.type)
-    if not node_cls:
-        logs.append(f"Unknown node type: {node.type}")
-        return
-    node_cls.execute(node.dict(), logs, context)
 
 
 
