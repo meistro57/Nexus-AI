@@ -11,6 +11,15 @@ This repository contains the initial scaffolding for **NEXUS AI**, a visual work
 
 ## Getting Started
 
+You can quickly update the repository and launch both the backend and
+frontend servers with the provided `start.sh` script:
+
+```bash
+./start.sh
+```
+
+To run the servers manually follow the steps below.
+
 ### Frontend
 
 ```bash
