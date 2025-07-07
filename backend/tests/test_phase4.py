@@ -1,12 +1,14 @@
 import sys
 import time
 from pathlib import Path
-from fastapi.testclient import TestClient
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
-from app.main import app, WORKFLOW_QUEUE
+
+from fastapi.testclient import TestClient
+from app.main import app
 
 client = TestClient(app)
+
 
 def test_suggestions_endpoint():
     wf = {
@@ -25,6 +27,7 @@ def test_suggestions_endpoint():
     data = res.json()
     assert any("Consecutive print" in s["message"] for s in data)
     assert any("Adding zero" in s["message"] for s in data)
+
 
 def test_enqueue_and_queue_status():
     wf = {

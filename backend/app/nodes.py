@@ -1,10 +1,16 @@
 from typing import Dict, Any, List, Callable
 
+
 class NodeBase:
     type: str
 
     @classmethod
-    def execute(cls, node: Dict[str, Any], logs: List[str], context: Dict[str, Any]):
+    def execute(
+        cls,
+        node: Dict[str, Any],
+        logs: List[str],
+        context: Dict[str, Any],
+    ):
         raise NotImplementedError
 
     @classmethod
@@ -12,18 +18,26 @@ class NodeBase:
         """Return list of validation error messages"""
         return []
 
+
 NODE_REGISTRY: Dict[str, NodeBase] = {}
+
 
 def register_node(node_cls: Callable):
     NODE_REGISTRY[node_cls.type] = node_cls
     return node_cls
+
 
 @register_node
 class PrintNode(NodeBase):
     type = "print"
 
     @classmethod
-    def execute(cls, node: Dict[str, Any], logs: List[str], context: Dict[str, Any]):
+    def execute(
+        cls,
+        node: Dict[str, Any],
+        logs: List[str],
+        context: Dict[str, Any],
+    ):
         params = node.get("params", {})
         logs.append(params.get("message", ""))
 
@@ -33,12 +47,18 @@ class PrintNode(NodeBase):
             return ["missing 'message'"]
         return []
 
+
 @register_node
 class AddNode(NodeBase):
     type = "add"
 
     @classmethod
-    def execute(cls, node: Dict[str, Any], logs: List[str], context: Dict[str, Any]):
+    def execute(
+        cls,
+        node: Dict[str, Any],
+        logs: List[str],
+        context: Dict[str, Any],
+    ):
         params = node.get("params", {})
         a = params.get("a", 0)
         b = params.get("b", 0)
