@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import json
@@ -9,6 +10,14 @@ from .nodes import NODE_REGISTRY
 from .agents import AGENTS, BaseAgent
 
 app = FastAPI(title="NEXUS AI Backend")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 ACTIVE_CONNECTIONS: List[WebSocket] = []
 

@@ -20,9 +20,10 @@ function App() {
       body: JSON.stringify(workflow)
     })
 
-    const res = await fetch(`http://localhost:8000/workflows/${workflow.id}/execute`, {
-      method: 'POST'
-    })
+    const res = await fetch(
+      `http://localhost:8000/workflows/${workflow.id}/execute`,
+      { method: 'POST' }
+    )
 
     const data = await res.json()
     setLogs(data.logs || [])
