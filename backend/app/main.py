@@ -1,6 +1,10 @@
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import List, Dict, Any
+import json
+from pathlib import Path
+
+from .nodes import NODE_REGISTRY
 
 from .agents import AGENTS, BaseAgent
 
@@ -31,6 +35,8 @@ class Workflow(BaseModel):
 
 
 WORKFLOWS: Dict[str, Workflow] = {}
+DATA_DIR = Path(__file__).resolve().parent / ".." / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 @app.websocket("/ws/logs")
 async def websocket_logs(ws: WebSocket):
@@ -51,6 +57,25 @@ def create_workflow(workflow: Workflow):
     WORKFLOWS[workflow.id] = workflow
     return workflow
 
+@app.post("/workflows/{workflow_id}/save")
+def save_workflow(workflow_id: str):
+    if workflow_id not in WORKFLOWS:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    workflow = WORKFLOWS[workflow_id]
+    path = DATA_DIR / f"{workflow_id}.json"
+    path.write_text(workflow.json())
+    return {"saved": str(path)}
+
+@app.post("/workflows/{workflow_id}/load", response_model=Workflow)
+def load_workflow(workflow_id: str):
+    path = DATA_DIR / f"{workflow_id}.json"
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="Workflow file not found")
+    data = json.loads(path.read_text())
+    workflow = Workflow(**data)
+    WORKFLOWS[workflow_id] = workflow
+    return workflow
+
 
 @app.get("/workflows", response_model=List[Workflow])
 def list_workflows():
@@ -62,6 +87,21 @@ def get_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return WORKFLOWS[workflow_id]
+
+@app.post("/workflows/{workflow_id}/validate")
+def validate_workflow_endpoint(workflow_id: str):
+    if workflow_id not in WORKFLOWS:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    workflow = WORKFLOWS[workflow_id]
+    errors: List[str] = []
+    for node in workflow.nodes:
+        node_cls = NODE_REGISTRY.get(node.type)
+        if not node_cls:
+            errors.append(f"Unknown node type: {node.type}")
+            continue
+        errors.extend(node_cls.validate(node.params))
+    return {"valid": len(errors) == 0, "errors": errors}
+
 
 
 async def log(message: str, logs: List[str]):
@@ -91,6 +131,13 @@ async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
             await log(f"{agent_name} -> {response}", logs)
     else:
         await log(f"Unknown node type: {node.type}", logs)
+def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
+    node_cls = NODE_REGISTRY.get(node.type)
+    if not node_cls:
+        logs.append(f"Unknown node type: {node.type}")
+        return
+    node_cls.execute(node.dict(), logs, context)
+
 
 
 @app.post("/workflows/{workflow_id}/execute")
