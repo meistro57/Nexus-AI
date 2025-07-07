@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from typing import List, Dict, Any
 import json
@@ -6,7 +6,21 @@ from pathlib import Path
 
 from .nodes import NODE_REGISTRY
 
+from .agents import AGENTS, BaseAgent
+
 app = FastAPI(title="NEXUS AI Backend")
+
+ACTIVE_CONNECTIONS: List[WebSocket] = []
+
+async def broadcast(message: str):
+    for ws in list(ACTIVE_CONNECTIONS):
+        try:
+            await ws.send_text(message)
+        except Exception:
+            try:
+                ACTIVE_CONNECTIONS.remove(ws)
+            except ValueError:
+                pass
 
 class Node(BaseModel):
     id: str
@@ -23,6 +37,16 @@ class Workflow(BaseModel):
 WORKFLOWS: Dict[str, Workflow] = {}
 DATA_DIR = Path(__file__).resolve().parent / ".." / "data"
 DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+@app.websocket("/ws/logs")
+async def websocket_logs(ws: WebSocket):
+    await ws.accept()
+    ACTIVE_CONNECTIONS.append(ws)
+    try:
+        while True:
+            await ws.receive_text()
+    except WebSocketDisconnect:
+        ACTIVE_CONNECTIONS.remove(ws)
 
 @app.get("/health")
 def health_check():
@@ -79,6 +103,34 @@ def validate_workflow_endpoint(workflow_id: str):
     return {"valid": len(errors) == 0, "errors": errors}
 
 
+
+async def log(message: str, logs: List[str]):
+    logs.append(message)
+    await broadcast(message)
+
+
+async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
+    if node.type == "print":
+        message = node.params.get("message", "")
+        await log(message, logs)
+    elif node.type == "add":
+        a = node.params.get("a", 0)
+        b = node.params.get("b", 0)
+        result = a + b
+        await log(f"{a} + {b} = {result}", logs)
+        context[node.id] = result
+    elif node.type == "agent":
+        agent_name = node.params.get("agent")
+        prompt = node.params.get("prompt", "")
+        agent: BaseAgent | None = AGENTS.get(agent_name)
+        if agent is None:
+            await log(f"Unknown agent: {agent_name}", logs)
+        else:
+            response = await agent.run(prompt)
+            context[node.id] = response
+            await log(f"{agent_name} -> {response}", logs)
+    else:
+        await log(f"Unknown node type: {node.type}", logs)
 def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
     node_cls = NODE_REGISTRY.get(node.type)
     if not node_cls:
@@ -87,8 +139,9 @@ def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
     node_cls.execute(node.dict(), logs, context)
 
 
+
 @app.post("/workflows/{workflow_id}/execute")
-def execute_workflow(workflow_id: str):
+async def execute_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
@@ -97,6 +150,6 @@ def execute_workflow(workflow_id: str):
     context: Dict[str, Any] = {}
 
     for node in workflow.nodes:
-        execute_node(node, logs, context)
+        await execute_node(node, logs, context)
 
     return {"logs": logs}
