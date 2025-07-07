@@ -31,6 +31,10 @@ uvicorn app.main:app --reload
 
 Both servers will start locally and allow you to connect the frontend to the backend as development progresses.
 
+### Phase 2 Progress
+
+The backend now includes a simple node factory and workflow validation logic. Workflows can also be saved to and loaded from disk using the new `/save` and `/load` endpoints.
+
 ## Development Roadmap
 
 See [roadmap.md](roadmap.md) for upcoming milestones and future plans.
