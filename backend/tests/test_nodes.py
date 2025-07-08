@@ -9,6 +9,7 @@ from app.main import app, WORKFLOWS
 from app.nodes import NODE_REGISTRY
 
 client = TestClient(app)
+HEADERS = {"Authorization": "Bearer testtoken"}
 
 
 def test_node_registry():
@@ -32,15 +33,15 @@ def test_workflow_validation_and_execution():
             {"id": "6", "type": "delay", "params": {"ms": 10}}
         ]
     }
-    res = client.post("/workflows", json=workflow)
+    res = client.post("/workflows", json=workflow, headers=HEADERS)
     assert res.status_code == 200
     # validate
-    res = client.post("/workflows/wf1/validate")
+    res = client.post("/workflows/wf1/validate", headers=HEADERS)
     data = res.json()
     assert data["valid"]
 
     # execute
-    res = client.post("/workflows/wf1/execute")
+    res = client.post("/workflows/wf1/execute", headers=HEADERS)
     data = res.json()
     log_text = "\n".join(data["logs"])
     assert "1 + 2 = 3" in log_text
@@ -49,7 +50,7 @@ def test_workflow_validation_and_execution():
     assert "loop 1/2" in log_text
 
     # save
-    res = client.post("/workflows/wf1/save")
+    res = client.post("/workflows/wf1/save", headers=HEADERS)
     assert res.status_code == 200
     saved = json.loads(res.content.decode())
     path = saved["saved"]
@@ -58,6 +59,6 @@ def test_workflow_validation_and_execution():
     # delete memory and load
     WORKFLOWS.pop("wf1")
     assert "wf1" not in WORKFLOWS
-    res = client.post("/workflows/wf1/load")
+    res = client.post("/workflows/wf1/load", headers=HEADERS)
     assert res.status_code == 200
     assert "wf1" in WORKFLOWS

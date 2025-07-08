@@ -1,5 +1,7 @@
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import APIKeyHeader
+from fastapi import Depends
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import json
@@ -11,7 +13,17 @@ from .nodes import NODE_REGISTRY
 
 from .agents import AGENTS, BaseAgent
 
+API_KEY = os.getenv("NEXUS_API_KEY", "testtoken")
+api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
+
+
+async def get_api_key(api_key: str | None = Depends(api_key_header)):
+    if api_key == f"Bearer {API_KEY}":
+        return api_key
+    raise HTTPException(status_code=401, detail="Unauthorized")
+
 app = FastAPI(title="NEXUS AI Backend")
+router = APIRouter(dependencies=[Depends(get_api_key)])
 
 app.add_middleware(
     CORSMiddleware,
@@ -110,12 +122,12 @@ class AgentTest(BaseModel):
     prompt: str
 
 
-@app.get("/agents")
+@router.get("/agents")
 def list_agents():
     return list(AGENTS.keys())
 
 
-@app.post("/agents/{agent_name}/test")
+@router.post("/agents/{agent_name}/test")
 async def test_agent(agent_name: str, data: AgentTest):
     agent = AGENTS.get(agent_name)
     if not agent:
@@ -124,13 +136,13 @@ async def test_agent(agent_name: str, data: AgentTest):
     return {"response": response}
 
 
-@app.post("/workflows", response_model=Workflow)
+@router.post("/workflows", response_model=Workflow)
 def create_workflow(workflow: Workflow):
     WORKFLOWS[workflow.id] = workflow
     return workflow
 
 
-@app.put("/workflows/{workflow_id}", response_model=Workflow)
+@router.put("/workflows/{workflow_id}", response_model=Workflow)
 def update_workflow(workflow_id: str, workflow: Workflow):
     if workflow_id != workflow.id:
         raise HTTPException(status_code=400, detail="ID mismatch")
@@ -140,7 +152,7 @@ def update_workflow(workflow_id: str, workflow: Workflow):
     return workflow
 
 
-@app.delete("/workflows/{workflow_id}")
+@router.delete("/workflows/{workflow_id}")
 def delete_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -151,7 +163,7 @@ def delete_workflow(workflow_id: str):
     return {"deleted": workflow_id}
 
 
-@app.post("/workflows/{workflow_id}/save")
+@router.post("/workflows/{workflow_id}/save")
 def save_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -161,7 +173,7 @@ def save_workflow(workflow_id: str):
     return {"saved": str(path)}
 
 
-@app.post("/workflows/{workflow_id}/load", response_model=Workflow)
+@router.post("/workflows/{workflow_id}/load", response_model=Workflow)
 def load_workflow(workflow_id: str):
     path = DATA_DIR / f"{workflow_id}.json"
     if not path.exists():
@@ -172,19 +184,19 @@ def load_workflow(workflow_id: str):
     return workflow
 
 
-@app.get("/workflows", response_model=List[Workflow])
+@router.get("/workflows", response_model=List[Workflow])
 def list_workflows():
     return list(WORKFLOWS.values())
 
 
-@app.get("/workflows/{workflow_id}", response_model=Workflow)
+@router.get("/workflows/{workflow_id}", response_model=Workflow)
 def get_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
     return WORKFLOWS[workflow_id]
 
 
-@app.post("/workflows/{workflow_id}/validate")
+@router.post("/workflows/{workflow_id}/validate")
 def validate_workflow_endpoint(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -227,7 +239,7 @@ def generate_suggestions(workflow: Workflow) -> List[Suggestion]:
     return suggestions
 
 
-@app.post("/workflows/{workflow_id}/suggest", response_model=List[Suggestion])
+@router.post("/workflows/{workflow_id}/suggest", response_model=List[Suggestion])
 def suggest_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -261,7 +273,7 @@ async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
         await log(f"Unknown node type: {node.type}", logs)
 
 
-@app.post("/workflows/{workflow_id}/execute")
+@router.post("/workflows/{workflow_id}/execute")
 async def execute_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -276,7 +288,7 @@ async def execute_workflow(workflow_id: str):
     return {"logs": logs}
 
 
-@app.post("/workflows/{workflow_id}/enqueue")
+@router.post("/workflows/{workflow_id}/enqueue")
 async def enqueue_workflow(workflow_id: str):
     if workflow_id not in WORKFLOWS:
         raise HTTPException(status_code=404, detail="Workflow not found")
@@ -285,6 +297,8 @@ async def enqueue_workflow(workflow_id: str):
     return {"queued": workflow_id, "queue_size": WORKFLOW_QUEUE.qsize()}
 
 
-@app.get("/queue/status")
+@router.get("/queue/status")
 def queue_status():
     return {"queue_size": WORKFLOW_QUEUE.qsize(), "workers": len(WORKERS)}
+
+app.include_router(router)
