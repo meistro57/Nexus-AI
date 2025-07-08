@@ -57,3 +57,4 @@ You can run the backend using Docker:
 docker build -t nexus-backend -f backend/Dockerfile backend
 docker run -p 8000:8000 nexus-backend
 ```
+![image](https://github.com/user-attachments/assets/5be6e6a4-3695-47f6-bcc2-aa32fc6779db)
