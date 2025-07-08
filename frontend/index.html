@@ -85,6 +85,16 @@
             font-size: 12px;
         }
 
+        .toolbar-select {
+            background: rgba(0, 255, 255, 0.1);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            color: #00ffff;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
         .toolbar-btn:hover {
             background: rgba(0, 255, 255, 0.2);
             transform: translateY(-2px);
@@ -214,6 +224,15 @@
             transition: all 0.3s ease;
             backdrop-filter: blur(10px);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .workflow-node.new {
+            animation: fadeIn 0.3s ease;
         }
 
         .workflow-node:hover {
@@ -504,6 +523,11 @@
                 <button class="toolbar-btn" onclick="saveWorkflow()">💾 Save</button>
                 <button class="toolbar-btn" onclick="loadWorkflow()">📁 Load</button>
                 <button class="toolbar-btn" onclick="exportWorkflow()">📤 Export</button>
+                <select id="templateSelect" class="toolbar-select" onchange="loadTemplate(this.value)">
+                    <option value="">Templates</option>
+                    <option value="sample">Sample</option>
+                    <option value="loop">Loop Demo</option>
+                </select>
                 <button class="toolbar-btn" onclick="toggleGrid()">⌗ Grid</button>
                 <button class="toolbar-btn" onclick="zoomFit()">🔍 Fit</button>
                 <button class="toolbar-btn" onclick="showSettings()">⚙️ Settings</button>
@@ -651,7 +675,7 @@
 
     <script>
         // Global variables
-        let canvas, ctx, connectionsSvg;
+        let canvas, ctx, connectionsSvg, minimapCanvas, minimapCtx;
         let nodes = [];
         let connections = [];
         let selectedNode = null;
@@ -668,14 +692,27 @@
             canvas = document.getElementById('canvas');
             ctx = canvas.getContext('2d');
             connectionsSvg = document.getElementById('connectionsSvg');
+            minimapCanvas = document.getElementById('minimapCanvas');
+            minimapCtx = minimapCanvas.getContext('2d');
             
             setupCanvas();
             setupDragAndDrop();
             setupEventListeners();
             createNeuralBackground();
-            
-            // Create sample workflow
-            createSampleWorkflow();
+
+            // Load default template
+            loadTemplate('sample');
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Delete' && selectedNode) {
+                    removeNode(selectedNode);
+                    selectedNode = null;
+                }
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                    e.preventDefault();
+                    saveWorkflow();
+                }
+            });
         });
 
         function setupCanvas() {
@@ -747,6 +784,8 @@
             createNodeElement(node);
             updateNodeCount();
             redrawCanvas();
+            updateMinimap();
+            return node;
         }
 
         function getNodeConfig(type) {
@@ -818,7 +857,7 @@
 
         function createNodeElement(node) {
             const nodeEl = document.createElement('div');
-            nodeEl.className = 'workflow-node';
+            nodeEl.className = 'workflow-node new';
             nodeEl.id = `node-${node.id}`;
             nodeEl.style.left = node.x + 'px';
             nodeEl.style.top = node.y + 'px';
@@ -837,6 +876,7 @@
             `;
             
             canvas.parentElement.appendChild(nodeEl);
+            setTimeout(() => nodeEl.classList.remove('new'), 300);
             
             // Add event listeners
             nodeEl.addEventListener('mousedown', function(e) {
@@ -853,6 +893,22 @@
                     startConnection(e, node, port.dataset.port);
                 });
             });
+        }
+
+        function removeNode(node) {
+            const index = nodes.indexOf(node);
+            if (index !== -1) {
+                nodes.splice(index, 1);
+            }
+            const nodeEl = document.getElementById(`node-${node.id}`);
+            if (nodeEl) nodeEl.remove();
+            connections = connections.filter(
+                c => c.from.node !== node && c.to.node !== node
+            );
+            updateNodeCount();
+            updateConnectionCount();
+            updateConnections();
+            updateMinimap();
         }
 
         function startDragging(e, node) {
@@ -896,8 +952,9 @@
                 const nodeEl = document.getElementById(`node-${selectedNode.id}`);
                 nodeEl.style.left = x + 'px';
                 nodeEl.style.top = y + 'px';
-                
+
                 updateConnections();
+                updateMinimap();
             }
             
             if (isConnecting) {
@@ -1002,9 +1059,10 @@
                 const fromY = fromRect.top + fromRect.height / 2 - canvasRect.top;
                 const toX = toRect.left - canvasRect.left;
                 const toY = toRect.top + toRect.height / 2 - canvasRect.top;
-                
+
                 createConnectionLine(fromX, fromY, toX, toY);
             });
+            updateMinimap();
         }
 
         function createConnectionLine(x1, y1, x2, y2) {
@@ -1107,12 +1165,39 @@
             }, 1000);
         }
 
+        function createLoopTemplate() {
+            createNode('data-input', 100, 150);
+            const loopNode = createNode('loop', 400, 150);
+            const printNode = createNode('print', 700, 150);
+            createConnection(nodes[0], 'output', loopNode, 'input');
+            createConnection(loopNode, 'output', printNode, 'input');
+        }
+
+        function loadTemplate(name) {
+            newWorkflow(true);
+            if (name === 'sample') {
+                createSampleWorkflow();
+            } else if (name === 'loop') {
+                createLoopTemplate();
+            }
+        }
+
         function updateNodeCount() {
             document.getElementById('nodeCount').textContent = nodes.length;
         }
 
         function updateConnectionCount() {
             document.getElementById('connectionCount').textContent = connections.length;
+        }
+
+        function updateMinimap() {
+            minimapCtx.clearRect(0, 0, minimapCanvas.width, minimapCanvas.height);
+            const scaleX = minimapCanvas.width / canvas.offsetWidth;
+            const scaleY = minimapCanvas.height / canvas.offsetHeight;
+            minimapCtx.fillStyle = 'rgba(0,255,255,0.5)';
+            nodes.forEach(n => {
+                minimapCtx.fillRect(n.x * scaleX, n.y * scaleY, 10, 6);
+            });
         }
 
         function redrawCanvas() {
@@ -1189,8 +1274,8 @@
         }
 
         // Toolbar Functions
-        function newWorkflow() {
-            if (confirm('Create new workflow? This will clear the current workspace.')) {
+        function newWorkflow(force = false) {
+            if (force || confirm('Create new workflow? This will clear the current workspace.')) {
                 nodes.forEach(node => {
                     const nodeEl = document.getElementById(`node-${node.id}`);
                     if (nodeEl) nodeEl.remove();
@@ -1200,6 +1285,7 @@
                 connectionsSvg.innerHTML = '';
                 updateNodeCount();
                 updateConnectionCount();
+                updateMinimap();
                 nodeIdCounter = 0;
             }
         }
@@ -1246,7 +1332,7 @@
         }
 
         function loadWorkflowFromData(workflow) {
-            newWorkflow();
+            newWorkflow(true);
             
             workflow.nodes.forEach(nodeData => {
                 const node = { ...nodeData };
@@ -1258,6 +1344,7 @@
             updateConnections();
             updateNodeCount();
             updateConnectionCount();
+            updateMinimap();
             nodeIdCounter = Math.max(...nodes.map(n => n.id)) + 1;
         }
 

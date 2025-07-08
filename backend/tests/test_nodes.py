@@ -26,7 +26,8 @@ def test_workflow_validation_and_execution():
             {"id": "1", "type": "print", "params": {"message": "hi"}},
             {"id": "2", "type": "add", "params": {"a": 1, "b": 2}},
             {"id": "3", "type": "condition", "params": {"expression": "1 < 2"}},
-            {"id": "4", "type": "loop", "params": {"count": 2}}
+            {"id": "4", "type": "loop", "params": {"count": 2}},
+            {"id": "5", "type": "delay", "params": {"ms": 10}}
         ]
     }
     res = client.post("/workflows", json=workflow)

@@ -246,6 +246,10 @@ async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
         count = int(node.params.get("count", 1))
         for i in range(count):
             await log(f"loop {i + 1}/{count}", logs)
+    elif node.type == "delay":
+        ms = int(node.params.get("ms", 1000))
+        await log(f"delay {ms}ms", logs)
+        await asyncio.sleep(ms / 1000.0)
     elif node.type == "agent":
         agent_name = node.params.get("agent")
         prompt = node.params.get("prompt", "")
