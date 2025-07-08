@@ -48,3 +48,12 @@ The backend now includes a simple node factory and workflow validation logic. Wo
 ## Development Roadmap
 
 See [roadmap.md](roadmap.md) for upcoming milestones and future plans.
+
+## Docker Deployment
+
+You can run the backend using Docker:
+
+```bash
+docker build -t nexus-backend -f backend/Dockerfile backend
+docker run -p 8000:8000 nexus-backend
+```
