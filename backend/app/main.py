@@ -250,6 +250,12 @@ async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
         result = a + b
         await log(f"{a} + {b} = {result}", logs)
         context[node.id] = result
+    elif node.type == "multiply":
+        a = node.params.get("a", 0)
+        b = node.params.get("b", 0)
+        result = a * b
+        await log(f"{a} * {b} = {result}", logs)
+        context[node.id] = result
     elif node.type == "condition":
         expr = node.params.get("expression", "")
         try:

@@ -16,6 +16,7 @@ def test_node_registry():
     assert 'add' in NODE_REGISTRY
     assert 'condition' in NODE_REGISTRY
     assert 'loop' in NODE_REGISTRY
+    assert 'multiply' in NODE_REGISTRY
 
 
 def test_workflow_validation_and_execution():
@@ -25,9 +26,10 @@ def test_workflow_validation_and_execution():
         "nodes": [
             {"id": "1", "type": "print", "params": {"message": "hi"}},
             {"id": "2", "type": "add", "params": {"a": 1, "b": 2}},
-            {"id": "3", "type": "condition", "params": {"expression": "1 < 2"}},
-            {"id": "4", "type": "loop", "params": {"count": 2}},
-            {"id": "5", "type": "delay", "params": {"ms": 10}}
+            {"id": "3", "type": "multiply", "params": {"a": 3, "b": 4}},
+            {"id": "4", "type": "condition", "params": {"expression": "1 < 2"}},
+            {"id": "5", "type": "loop", "params": {"count": 2}},
+            {"id": "6", "type": "delay", "params": {"ms": 10}}
         ]
     }
     res = client.post("/workflows", json=workflow)
@@ -42,6 +44,7 @@ def test_workflow_validation_and_execution():
     data = res.json()
     log_text = "\n".join(data["logs"])
     assert "1 + 2 = 3" in log_text
+    assert "3 * 4 = 12" in log_text
     assert "1 < 2 -> True" in log_text
     assert "loop 1/2" in log_text
 
