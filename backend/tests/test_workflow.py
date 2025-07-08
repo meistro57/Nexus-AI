@@ -7,6 +7,7 @@ sys.path.append(str(Path(__file__).resolve().parents[1]))
 from app.main import app
 
 client = TestClient(app)
+HEADERS = {"Authorization": "Bearer testtoken"}
 
 
 def test_execute_agent_node():
@@ -21,11 +22,11 @@ def test_execute_agent_node():
             }
         ]
     }
-    res = client.post("/workflows", json=workflow)
+    res = client.post("/workflows", json=workflow, headers=HEADERS)
     assert res.status_code == 200
 
     with client.websocket_connect("/ws/logs") as ws:
-        exec_res = client.post(f"/workflows/{workflow['id']}/execute")
+        exec_res = client.post(f"/workflows/{workflow['id']}/execute", headers=HEADERS)
         assert exec_res.status_code == 200
         data = exec_res.json()
         assert "ECHO: hello" in data["logs"][-1]
