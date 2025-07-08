@@ -74,3 +74,54 @@ class AddNode(NodeBase):
         if not isinstance(params.get("b"), (int, float)):
             errors.append("'b' must be a number")
         return errors
+
+
+@register_node
+class ConditionNode(NodeBase):
+    type = "condition"
+
+    @classmethod
+    def execute(
+        cls,
+        node: Dict[str, Any],
+        logs: List[str],
+        context: Dict[str, Any],
+    ):
+        params = node.get("params", {})
+        expr = params.get("expression", "")
+        try:
+            result = bool(eval(expr, {}, context))
+        except Exception as e:
+            result = False
+            logs.append(f"Condition error: {e}")
+        logs.append(f"{expr} -> {result}")
+        context[node.get("id", "cond")] = result
+
+    @classmethod
+    def validate(cls, params: Dict[str, Any]) -> List[str]:
+        if "expression" not in params:
+            return ["missing 'expression'"]
+        return []
+
+
+@register_node
+class LoopNode(NodeBase):
+    type = "loop"
+
+    @classmethod
+    def execute(
+        cls,
+        node: Dict[str, Any],
+        logs: List[str],
+        context: Dict[str, Any],
+    ):
+        params = node.get("params", {})
+        count = int(params.get("count", 1))
+        for i in range(count):
+            logs.append(f"loop {i + 1}/{count}")
+
+    @classmethod
+    def validate(cls, params: Dict[str, Any]) -> List[str]:
+        if not isinstance(params.get("count"), int) or params.get("count") < 1:
+            return ["'count' must be a positive integer"]
+        return []

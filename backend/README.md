@@ -24,10 +24,17 @@ POST /workflows/{id}/save      # save workflow to disk
 POST /workflows/{id}/load      # load workflow from disk
 ```
 
-Two simple node types are implemented:
+Several node types are implemented:
 
 - `print` – logs a message
 - `add` – adds two numbers and logs the result
+- `condition` – evaluates a boolean expression using workflow context
+- `loop` – logs a message for a configurable number of iterations
 
-These nodes are registered using a simple node factory, allowing new node types
-to be added by registering additional classes in `app/nodes.py`.
+Nodes are registered using a simple node factory, allowing new types to be added
+by registering additional classes in `app/nodes.py`.
+
+New agent helper endpoints are also available:
+
+- `GET  /agents` – list available agents
+- `POST /agents/{name}/test` – run an agent with a prompt for quick testing
