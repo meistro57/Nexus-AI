@@ -4,9 +4,24 @@ export default function LogPanel() {
   const [logs, setLogs] = useState([])
 
   useEffect(() => {
-    const ws = new WebSocket('ws://localhost:8000/ws/logs')
-    ws.onmessage = evt => setLogs(l => [...l, evt.data])
-    return () => ws.close()
+    let socket
+    let shouldReconnect = true
+
+    const connect = () => {
+      socket = new WebSocket('ws://localhost:8000/ws/logs')
+      socket.onmessage = evt => setLogs(l => [...l, evt.data])
+      socket.onerror = () => socket.close()
+      socket.onclose = () => {
+        if (shouldReconnect) setTimeout(connect, 1000)
+      }
+    }
+
+    connect()
+
+    return () => {
+      shouldReconnect = false
+      socket?.close()
+    }
   }, [])
 
   return (

@@ -10,6 +10,7 @@ import NodePalette from './NodePalette.jsx'
 import { nodeConfigs } from './nodeConfigs.js'
 import { useWorkflowStore } from './store.js'
 import LogPanel from './LogPanel.jsx'
+import { nodeTypes, edgeTypes } from './flowTypes.js'
 
 let id = 0
 const getId = () => `node_${id++}`
@@ -17,20 +18,19 @@ const getId = () => `node_${id++}`
 export default function WorkflowCanvas() {
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
-  const { nodes, edges, setNodes, setEdges, addNode, addEdge } =
-    useWorkflowStore()
+  const { nodes, edges, setNodes, setEdges, addNode } = useWorkflowStore()
 
   const onNodesChange = useCallback(
     changes => setNodes(applyNodeChanges(changes, nodes)),
-    [nodes]
+    [nodes, setNodes]
   )
   const onEdgesChange = useCallback(
     changes => setEdges(applyEdgeChanges(changes, edges)),
-    [edges]
+    [edges, setEdges]
   )
   const onConnect = useCallback(
     params => setEdges(reactAddEdge(params, edges)),
-    [edges]
+    [edges, setEdges]
   )
 
   const onDragOver = useCallback(event => {
@@ -56,7 +56,7 @@ export default function WorkflowCanvas() {
       }
       addNode(newNode)
     },
-    [reactFlowInstance]
+    [reactFlowInstance, addNode]
   )
 
   const handleDragStart = (event, nodeType) => {
@@ -72,6 +72,8 @@ export default function WorkflowCanvas() {
           <ReactFlow
             nodes={nodes}
             edges={edges}
+            nodeTypes={nodeTypes}
+            edgeTypes={edgeTypes}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
