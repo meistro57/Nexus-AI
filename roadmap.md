@@ -42,3 +42,12 @@ For more detailed specifications, see [AGENTS.md](AGENTS.md).
 - Documentation completion
 - Deployment setup
 
+## Next Steps – Features for a Functioning Product
+The following items will bring NEXUS AI from prototype to a usable application:
+
+- Convert the current static HTML into reusable React components.
+- Introduce global state management (e.g. Redux or Zustand) for workflows.
+- Provide real-time WebSocket updates for execution status and logs.
+- Add robust validation and error handling for all node types.
+- Implement authentication and authorization across the API.
+
