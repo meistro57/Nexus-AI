@@ -38,3 +38,6 @@ New agent helper endpoints are also available:
 
 - `GET  /agents` – list available agents
 - `POST /agents/{name}/test` – run an agent with a prompt for quick testing
+
+Agent plugins can be dropped into `app/plugins` and will be loaded
+automatically at startup. An example `uppercase` plugin is included.
