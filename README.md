@@ -1,12 +1,12 @@
 # Nexus AI
 
-This repository contains the scaffolding for **NEXUS AI**, a visual workflow designer for orchestrating multi-agent AI systems. The project consists of a frontend that now ships with a rich HTML/JS interface and a FastAPI backend.
+This repository contains the scaffolding for **NEXUS AI**, a visual workflow designer for orchestrating multi-agent AI systems. It includes a React-based frontend powered by Vite and a FastAPI backend.
 
 ## Structure
 
-- `frontend/` – Vite project serving the GUI from `index.html`
+- `frontend/` – Vite project with a ReactFlow-based workflow designer
 - `backend/` – FastAPI server providing REST and WebSocket APIs
-- `Project_Overview.md` – High-level project specification
+- `AGENTS.md` – Internal project notes and suggestions
 - `roadmap.md` – Timeline of planned features and phases
 
 ## Getting Started
@@ -27,7 +27,7 @@ cd frontend
 npm install
 npm run dev
 ```
-The development server now serves `index.html`, which contains the interactive workflow builder originally provided in `template.html`.
+The development server starts a React app with a ReactFlow-based workflow builder.
 
 ### Backend
 
@@ -43,7 +43,7 @@ Both servers will start locally and allow you to connect the frontend to the bac
 
 ### Phase 2 Progress
 
-The backend now includes a simple node factory and workflow validation logic. Workflows can also be saved to and loaded from disk using the new `/save` and `/load` endpoints.
+The backend now includes a simple node factory and workflow validation logic. Workflows can be saved to and loaded from disk using the `/save` and `/load` endpoints. Additional update and delete endpoints were added along with a new `multiply` node. The frontend has been rewritten with ReactFlow for improved node editing.
 
 ## Development Roadmap
 
