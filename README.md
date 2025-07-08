@@ -4,7 +4,7 @@ This repository contains the scaffolding for **NEXUS AI**, a visual workflow des
 
 ## Structure
 
-- `frontend/` – Next.js project with a ReactFlow-based workflow designer
+- `frontend/` – Next.js project that now embeds the Node-RED editor
 - `backend/` – FastAPI server providing REST and WebSocket APIs
 - `AGENTS.md` – Internal project notes and suggestions
 - `roadmap.md` – Timeline of planned features and phases
@@ -26,8 +26,15 @@ To run the servers manually follow the steps below.
 cd frontend
 npm install
 npm run dev
+
+# Start a local Node-RED instance separately
+npm install -g node-red
+node-red
 ```
-The development server starts a React app with a ReactFlow-based workflow builder.
+The development server hosts a simple Next.js wrapper that displays the
+Node-RED editor in an iframe.
+
+Set `NEXT_PUBLIC_NODE_RED_URL` to change the embedded editor URL.
 
 ### Backend
 
