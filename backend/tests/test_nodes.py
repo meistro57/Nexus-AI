@@ -14,6 +14,8 @@ client = TestClient(app)
 def test_node_registry():
     assert 'print' in NODE_REGISTRY
     assert 'add' in NODE_REGISTRY
+    assert 'condition' in NODE_REGISTRY
+    assert 'loop' in NODE_REGISTRY
 
 
 def test_workflow_validation_and_execution():
@@ -22,7 +24,9 @@ def test_workflow_validation_and_execution():
         "name": "Demo",
         "nodes": [
             {"id": "1", "type": "print", "params": {"message": "hi"}},
-            {"id": "2", "type": "add", "params": {"a": 1, "b": 2}}
+            {"id": "2", "type": "add", "params": {"a": 1, "b": 2}},
+            {"id": "3", "type": "condition", "params": {"expression": "1 < 2"}},
+            {"id": "4", "type": "loop", "params": {"count": 2}}
         ]
     }
     res = client.post("/workflows", json=workflow)
@@ -35,7 +39,10 @@ def test_workflow_validation_and_execution():
     # execute
     res = client.post("/workflows/wf1/execute")
     data = res.json()
-    assert "1 + 2 = 3" in "\n".join(data["logs"])
+    log_text = "\n".join(data["logs"])
+    assert "1 + 2 = 3" in log_text
+    assert "1 < 2 -> True" in log_text
+    assert "loop 1/2" in log_text
 
     # save
     res = client.post("/workflows/wf1/save")

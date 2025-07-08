@@ -108,6 +108,24 @@ def health_check():
     return {"status": "ok"}
 
 
+class AgentTest(BaseModel):
+    prompt: str
+
+
+@app.get("/agents")
+def list_agents():
+    return list(AGENTS.keys())
+
+
+@app.post("/agents/{agent_name}/test")
+async def test_agent(agent_name: str, data: AgentTest):
+    agent = AGENTS.get(agent_name)
+    if not agent:
+        raise HTTPException(status_code=404, detail="Agent not found")
+    response = await agent.run(data.prompt)
+    return {"response": response}
+
+
 @app.post("/workflows", response_model=Workflow)
 def create_workflow(workflow: Workflow):
     WORKFLOWS[workflow.id] = workflow
@@ -215,6 +233,19 @@ async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
         result = a + b
         await log(f"{a} + {b} = {result}", logs)
         context[node.id] = result
+    elif node.type == "condition":
+        expr = node.params.get("expression", "")
+        try:
+            result = bool(eval(expr, {}, context))
+        except Exception as e:
+            result = False
+            await log(f"Condition error: {e}", logs)
+        context[node.id] = result
+        await log(f"{expr} -> {result}", logs)
+    elif node.type == "loop":
+        count = int(node.params.get("count", 1))
+        for i in range(count):
+            await log(f"loop {i + 1}/{count}", logs)
     elif node.type == "agent":
         agent_name = node.params.get("agent")
         prompt = node.params.get("prompt", "")
