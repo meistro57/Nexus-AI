@@ -17,8 +17,7 @@ const getId = () => `node_${id++}`
 export default function WorkflowCanvas() {
   const reactFlowWrapper = useRef(null)
   const [reactFlowInstance, setReactFlowInstance] = useState(null)
-  const { nodes, edges, setNodes, setEdges, addNode, addEdge } =
-    useWorkflowStore()
+  const { nodes, edges, setNodes, setEdges, addNode } = useWorkflowStore()
 
   const onNodesChange = useCallback(
     changes => setNodes(applyNodeChanges(changes, nodes)),
