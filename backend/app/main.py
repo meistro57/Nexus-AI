@@ -241,38 +241,12 @@ async def log(message: str, logs: List[str]):
 
 
 async def execute_node(node: Node, logs: List[str], context: Dict[str, Any]):
-    if node.type == "print":
-        message = node.params.get("message", "")
-        await log(message, logs)
-    elif node.type == "add":
-        a = node.params.get("a", 0)
-        b = node.params.get("b", 0)
-        result = a + b
-        await log(f"{a} + {b} = {result}", logs)
-        context[node.id] = result
-    elif node.type == "multiply":
-        a = node.params.get("a", 0)
-        b = node.params.get("b", 0)
-        result = a * b
-        await log(f"{a} * {b} = {result}", logs)
-        context[node.id] = result
-    elif node.type == "condition":
-        expr = node.params.get("expression", "")
-        try:
-            result = bool(eval(expr, {}, context))
-        except Exception as e:
-            result = False
-            await log(f"Condition error: {e}", logs)
-        context[node.id] = result
-        await log(f"{expr} -> {result}", logs)
-    elif node.type == "loop":
-        count = int(node.params.get("count", 1))
-        for i in range(count):
-            await log(f"loop {i + 1}/{count}", logs)
-    elif node.type == "delay":
-        ms = int(node.params.get("ms", 1000))
-        await log(f"delay {ms}ms", logs)
-        await asyncio.sleep(ms / 1000.0)
+    node_cls = NODE_REGISTRY.get(node.type)
+    if node_cls is not None:
+        async def node_log(message: str):
+            await log(message, logs)
+
+        await node_cls.execute(node.model_dump(), node_log, context)
     elif node.type == "agent":
         agent_name = node.params.get("agent")
         prompt = node.params.get("prompt", "")

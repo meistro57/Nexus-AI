@@ -1,17 +1,18 @@
-from typing import Dict, Any, List, Callable
-import time
+from typing import Dict, Any, List, Callable, Awaitable
+import asyncio
 
 
 class NodeBase:
     type: str
 
     @classmethod
-    def execute(
+    async def execute(
         cls,
         node: Dict[str, Any],
-        logs: List[str],
+        log: Callable[[str], Awaitable[None]],
         context: Dict[str, Any],
-    ):
+    ) -> None:
+        """Execute the node logic and optionally mutate the context."""
         raise NotImplementedError
 
     @classmethod
@@ -33,14 +34,14 @@ class PrintNode(NodeBase):
     type = "print"
 
     @classmethod
-    def execute(
+    async def execute(
         cls,
         node: Dict[str, Any],
-        logs: List[str],
+        log: Callable[[str], Awaitable[None]],
         context: Dict[str, Any],
     ):
         params = node.get("params", {})
-        logs.append(params.get("message", ""))
+        await log(params.get("message", ""))
 
     @classmethod
     def validate(cls, params: Dict[str, Any]) -> List[str]:
@@ -54,17 +55,17 @@ class AddNode(NodeBase):
     type = "add"
 
     @classmethod
-    def execute(
+    async def execute(
         cls,
         node: Dict[str, Any],
-        logs: List[str],
+        log: Callable[[str], Awaitable[None]],
         context: Dict[str, Any],
     ):
         params = node.get("params", {})
         a = params.get("a", 0)
         b = params.get("b", 0)
         result = a + b
-        logs.append(f"{a} + {b} = {result}")
+        await log(f"{a} + {b} = {result}")
         context[node.get("id", "result")] = result
 
     @classmethod
@@ -82,17 +83,17 @@ class MultiplyNode(NodeBase):
     type = "multiply"
 
     @classmethod
-    def execute(
+    async def execute(
         cls,
         node: Dict[str, Any],
-        logs: List[str],
+        log: Callable[[str], Awaitable[None]],
         context: Dict[str, Any],
     ):
         params = node.get("params", {})
         a = params.get("a", 0)
         b = params.get("b", 0)
         result = a * b
-        logs.append(f"{a} * {b} = {result}")
+        await log(f"{a} * {b} = {result}")
         context[node.get("id", "result")] = result
 
     @classmethod
@@ -110,10 +111,10 @@ class ConditionNode(NodeBase):
     type = "condition"
 
     @classmethod
-    def execute(
+    async def execute(
         cls,
         node: Dict[str, Any],
-        logs: List[str],
+        log: Callable[[str], Awaitable[None]],
         context: Dict[str, Any],
     ):
         params = node.get("params", {})
@@ -122,8 +123,8 @@ class ConditionNode(NodeBase):
             result = bool(eval(expr, {}, context))
         except Exception as e:
             result = False
-            logs.append(f"Condition error: {e}")
-        logs.append(f"{expr} -> {result}")
+            await log(f"Condition error: {e}")
+        await log(f"{expr} -> {result}")
         context[node.get("id", "cond")] = result
 
     @classmethod
@@ -138,16 +139,16 @@ class LoopNode(NodeBase):
     type = "loop"
 
     @classmethod
-    def execute(
+    async def execute(
         cls,
         node: Dict[str, Any],
-        logs: List[str],
+        log: Callable[[str], Awaitable[None]],
         context: Dict[str, Any],
     ):
         params = node.get("params", {})
         count = int(params.get("count", 1))
         for i in range(count):
-            logs.append(f"loop {i + 1}/{count}")
+            await log(f"loop {i + 1}/{count}")
 
     @classmethod
     def validate(cls, params: Dict[str, Any]) -> List[str]:
@@ -161,16 +162,16 @@ class DelayNode(NodeBase):
     type = "delay"
 
     @classmethod
-    def execute(
+    async def execute(
         cls,
         node: Dict[str, Any],
-        logs: List[str],
+        log: Callable[[str], Awaitable[None]],
         context: Dict[str, Any],
     ):
         params = node.get("params", {})
         ms = int(params.get("ms", 1000))
-        logs.append(f"delay {ms}ms")
-        time.sleep(ms / 1000.0)
+        await log(f"delay {ms}ms")
+        await asyncio.sleep(ms / 1000.0)
 
     @classmethod
     def validate(cls, params: Dict[str, Any]) -> List[str]:
