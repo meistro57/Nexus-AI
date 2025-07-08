@@ -178,3 +178,123 @@ class DelayNode(NodeBase):
         if not isinstance(params.get("ms"), int) or params.get("ms") < 0:
             return ["'ms' must be a non-negative integer"]
         return []
+
+
+@register_node
+class SubtractNode(NodeBase):
+    type = "subtract"
+
+    @classmethod
+    async def execute(
+        cls,
+        node: Dict[str, Any],
+        log: Callable[[str], Awaitable[None]],
+        context: Dict[str, Any],
+    ):
+        params = node.get("params", {})
+        a = params.get("a", 0)
+        b = params.get("b", 0)
+        result = a - b
+        await log(f"{a} - {b} = {result}")
+        context[node.get("id", "result")] = result
+
+    @classmethod
+    def validate(cls, params: Dict[str, Any]) -> List[str]:
+        errors = []
+        if not isinstance(params.get("a"), (int, float)):
+            errors.append("'a' must be a number")
+        if not isinstance(params.get("b"), (int, float)):
+            errors.append("'b' must be a number")
+        return errors
+
+
+@register_node
+class DivideNode(NodeBase):
+    type = "divide"
+
+    @classmethod
+    async def execute(
+        cls,
+        node: Dict[str, Any],
+        log: Callable[[str], Awaitable[None]],
+        context: Dict[str, Any],
+    ):
+        params = node.get("params", {})
+        a = params.get("a", 0)
+        b = params.get("b", 1)
+        if b == 0:
+            await log("division by zero")
+            result = None
+        else:
+            result = a / b
+            await log(f"{a} / {b} = {result}")
+        context[node.get("id", "result")] = result
+
+    @classmethod
+    def validate(cls, params: Dict[str, Any]) -> List[str]:
+        errors = []
+        if not isinstance(params.get("a"), (int, float)):
+            errors.append("'a' must be a number")
+        if not isinstance(params.get("b"), (int, float)):
+            errors.append("'b' must be a number")
+        return errors
+
+
+@register_node
+class PowerNode(NodeBase):
+    type = "power"
+
+    @classmethod
+    async def execute(
+        cls,
+        node: Dict[str, Any],
+        log: Callable[[str], Awaitable[None]],
+        context: Dict[str, Any],
+    ):
+        params = node.get("params", {})
+        a = params.get("a", 0)
+        b = params.get("b", 0)
+        result = a ** b
+        await log(f"{a} ** {b} = {result}")
+        context[node.get("id", "result")] = result
+
+    @classmethod
+    def validate(cls, params: Dict[str, Any]) -> List[str]:
+        errors = []
+        if not isinstance(params.get("a"), (int, float)):
+            errors.append("'a' must be a number")
+        if not isinstance(params.get("b"), (int, float)):
+            errors.append("'b' must be a number")
+        return errors
+
+
+@register_node
+class ModuloNode(NodeBase):
+    type = "modulo"
+
+    @classmethod
+    async def execute(
+        cls,
+        node: Dict[str, Any],
+        log: Callable[[str], Awaitable[None]],
+        context: Dict[str, Any],
+    ):
+        params = node.get("params", {})
+        a = params.get("a", 0)
+        b = params.get("b", 1)
+        if b == 0:
+            await log("modulo by zero")
+            result = None
+        else:
+            result = a % b
+            await log(f"{a} % {b} = {result}")
+        context[node.get("id", "result")] = result
+
+    @classmethod
+    def validate(cls, params: Dict[str, Any]) -> List[str]:
+        errors = []
+        if not isinstance(params.get("a"), (int, float)):
+            errors.append("'a' must be a number")
+        if not isinstance(params.get("b"), (int, float)):
+            errors.append("'b' must be a number")
+        return errors
