@@ -26,3 +26,10 @@ This roadmap outlines the major phases planned for NEXUS AI. Dates are estimates
 
 For more detailed specifications, see [Project_Overview.md](Project_Overview.md).
 
+## Phase 5 – Polish & Optimization
+- Performance optimization
+- UI/UX refinements
+- Comprehensive testing
+- Documentation completion
+- Deployment setup
+
