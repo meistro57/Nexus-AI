@@ -10,6 +10,7 @@ import NodePalette from './NodePalette.jsx'
 import { nodeConfigs } from './nodeConfigs.js'
 import { useWorkflowStore } from './store.js'
 import LogPanel from './LogPanel.jsx'
+import ExecutionControls from './ExecutionControls.jsx'
 import { nodeTypes, edgeTypes } from './flowTypes.js'
 
 let id = 0
@@ -83,6 +84,7 @@ export default function WorkflowCanvas() {
             fitView
           />
         </ReactFlowProvider>
+        <ExecutionControls />
         <LogPanel />
       </div>
     </div>
