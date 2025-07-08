@@ -506,6 +506,22 @@
         .status-indicator.warning {
             background: #ffff00;
         }
+
+        .log-output {
+            position: absolute;
+            left: 20px;
+            right: 20px;
+            bottom: 90px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid rgba(0, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: #00ffff;
+        }
     </style>
 </head>
 <body>
@@ -673,6 +689,8 @@
         <button class="exec-btn" onclick="validateWorkflow()">✅ Validate</button>
     </div>
 
+    <pre id="logOutput" class="log-output"></pre>
+
     <script>
         // Global variables
         let canvas, ctx, connectionsSvg, minimapCanvas, minimapCtx;
@@ -686,6 +704,8 @@
         let zoom = 1;
         let panOffset = { x: 0, y: 0 };
         let nodeIdCounter = 0;
+        const API_BASE = 'http://localhost:8000';
+        let logSocket = null;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -1360,29 +1380,44 @@
                     to: conn.to.node.id
                 }))
             };
-            
+
             console.log('Exported workflow:', workflow);
             alert('Workflow exported to console');
         }
 
-        function executeWorkflow() {
-            nodes.forEach(node => {
-                const nodeEl = document.getElementById(`node-${node.id}`);
-                nodeEl.classList.add('executing');
-                
-                // Simulate execution
-                setTimeout(() => {
-                    nodeEl.classList.remove('executing');
-                    node.status = 'completed';
-                    nodeEl.querySelector('.node-status').textContent = 'Status: completed';
-                }, 2000 + Math.random() * 3000);
-            });
-            
-            // Update status
-            document.querySelector('.status-indicator').className = 'status-indicator warning';
-            setTimeout(() => {
-                document.querySelector('.status-indicator').className = 'status-indicator';
-            }, 5000);
+        function getWorkflowForBackend() {
+            return {
+                id: 'ui-workflow',
+                name: 'UI Workflow',
+                nodes: nodes.map(node => ({
+                    id: String(node.id),
+                    type: node.type,
+                    params: node.properties
+                }))
+            };
+        }
+
+        async function executeWorkflow() {
+            const workflow = getWorkflowForBackend();
+            const logEl = document.getElementById('logOutput');
+            logEl.textContent = '';
+            try {
+                await fetch(`${API_BASE}/workflows`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(workflow)
+                });
+
+                logSocket = new WebSocket(`ws://localhost:8000/ws/logs`);
+                logSocket.onmessage = (e) => {
+                    logEl.textContent += e.data + '\n';
+                };
+
+                await fetch(`${API_BASE}/workflows/${workflow.id}/execute`, { method: 'POST' });
+            } catch (err) {
+                console.error(err);
+                alert('Error executing workflow');
+            }
         }
 
         function stopWorkflow() {
@@ -1401,23 +1436,19 @@
             alert('Debug info logged to console');
         }
 
-        function validateWorkflow() {
-            let errors = [];
-            
-            // Check for disconnected nodes
-            nodes.forEach(node => {
-                const hasInput = connections.some(conn => conn.to.node.id === node.id);
-                const hasOutput = connections.some(conn => conn.from.node.id === node.id);
-                
-                if (!hasInput && !hasOutput) {
-                    errors.push(`Node "${node.title}" is not connected`);
-                }
+        async function validateWorkflow() {
+            const workflow = getWorkflowForBackend();
+            await fetch(`${API_BASE}/workflows`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(workflow)
             });
-            
-            if (errors.length === 0) {
+            const res = await fetch(`${API_BASE}/workflows/${workflow.id}/validate`, { method: 'POST' });
+            const data = await res.json();
+            if (data.valid) {
                 alert('✅ Workflow validation passed!');
             } else {
-                alert('❌ Validation errors:\n' + errors.join('\n'));
+                alert('❌ Validation errors:\n' + data.errors.join('\n'));
             }
         }
 
