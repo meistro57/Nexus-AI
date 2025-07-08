@@ -1,4 +1,5 @@
 from typing import Dict, Any, List, Callable
+import time
 
 
 class NodeBase:
@@ -124,4 +125,27 @@ class LoopNode(NodeBase):
     def validate(cls, params: Dict[str, Any]) -> List[str]:
         if not isinstance(params.get("count"), int) or params.get("count") < 1:
             return ["'count' must be a positive integer"]
+        return []
+
+
+@register_node
+class DelayNode(NodeBase):
+    type = "delay"
+
+    @classmethod
+    def execute(
+        cls,
+        node: Dict[str, Any],
+        logs: List[str],
+        context: Dict[str, Any],
+    ):
+        params = node.get("params", {})
+        ms = int(params.get("ms", 1000))
+        logs.append(f"delay {ms}ms")
+        time.sleep(ms / 1000.0)
+
+    @classmethod
+    def validate(cls, params: Dict[str, Any]) -> List[str]:
+        if not isinstance(params.get("ms"), int) or params.get("ms") < 0:
+            return ["'ms' must be a non-negative integer"]
         return []
