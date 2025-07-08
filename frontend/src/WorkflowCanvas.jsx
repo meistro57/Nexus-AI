@@ -62,6 +62,8 @@ export default function WorkflowCanvas() {
 
   const handleDragStart = (event, nodeType) => {
     event.dataTransfer.setData('application/reactflow', nodeType)
+    // some browsers require a text/plain data entry for drag events
+    event.dataTransfer.setData('text/plain', nodeType)
     event.dataTransfer.effectAllowed = 'move'
   }
 
