@@ -78,9 +78,7 @@ async def worker():
 
 
 async def scale_workers():
-    while len(WORKERS) < min(
-        MAX_WORKERS, WORKFLOW_QUEUE.qsize() + MIN_WORKERS
-    ):
+    while len(WORKERS) < min(MAX_WORKERS, WORKFLOW_QUEUE.qsize() + MIN_WORKERS):
         task = asyncio.create_task(worker())
         WORKERS.append(task)
 
@@ -130,6 +128,27 @@ async def test_agent(agent_name: str, data: AgentTest):
 def create_workflow(workflow: Workflow):
     WORKFLOWS[workflow.id] = workflow
     return workflow
+
+
+@app.put("/workflows/{workflow_id}", response_model=Workflow)
+def update_workflow(workflow_id: str, workflow: Workflow):
+    if workflow_id != workflow.id:
+        raise HTTPException(status_code=400, detail="ID mismatch")
+    if workflow_id not in WORKFLOWS:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    WORKFLOWS[workflow_id] = workflow
+    return workflow
+
+
+@app.delete("/workflows/{workflow_id}")
+def delete_workflow(workflow_id: str):
+    if workflow_id not in WORKFLOWS:
+        raise HTTPException(status_code=404, detail="Workflow not found")
+    WORKFLOWS.pop(workflow_id)
+    path = DATA_DIR / f"{workflow_id}.json"
+    if path.exists():
+        path.unlink()
+    return {"deleted": workflow_id}
 
 
 @app.post("/workflows/{workflow_id}/save")
@@ -199,9 +218,7 @@ def generate_suggestions(workflow: Workflow) -> List[Suggestion]:
             b = node.params.get("b", 0)
             if a == 0 or b == 0:
                 suggestions.append(
-                    Suggestion(
-                        message="Adding zero has no effect", node_id=node.id
-                    )
+                    Suggestion(message="Adding zero has no effect", node_id=node.id)
                 )
     if len(workflow.nodes) > 10:
         suggestions.append(
